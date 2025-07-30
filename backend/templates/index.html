@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeZone - Safety You Can See</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- ✅ CUSTOM STYLES CSS -->
+    <link href="/static/styles.css" rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SafeZone">
+    <meta name="theme-color" content="#198754">
+
+    <!-- iOS Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/static/android-chrome-512x512.png">
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg border-bottom">
+        <div class="container-fluid">
+            <h1 class="navbar-brand mb-0 h1 fw-bold">SafeZone - Safety You Can See.</h1>
+
+            <div class="d-flex align-items-center gap-3">
+                <!-- Backend Status -->
+                <div class="d-flex align-items-center">
+                    <span id="backend-status-indicator" class="status-indicator status-disconnected"></span>
+                    <small id="backend-status-text" class="text-muted">Verificando...</small>
+                </div>
+
+                <!-- WebSocket Status -->
+                <div class="d-flex align-items-center">
+                    <span id="ws-status-indicator" class="status-indicator status-disconnected"></span>
+                    <small id="ws-status-text" class="text-muted">Desconectado</small>
+                </div>
+
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-sun-fill"></i>
+                    <span class="d-none d-sm-inline ms-1">Light</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10 col-xl-8">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0">
+                            <i class="bi bi-camera-video me-2"></i>Monitor
+                        </h2>
+                    </div>
+                    <div class="card-body text-center">
+                        <!-- Video Stream -->
+                        <div class="video-container mb-3">
+                            <img id="video-stream"
+                                 src="/video_feed"
+                                 alt="Streaming de vídeo"
+                                 class="video-stream"
+                                 style="background: #222;">
+
+                            <!-- Detection Overlay -->
+                            <div id="video-overlay" class="video-overlay"></div>
+                        </div>
+
+                        <!-- Audio Element -->
+                        <audio id="alarm-audio" loop>
+                            <source src="/static/rooster-crowing-in-the-morning-2462.wav" type="audio/wav">
+                            Seu navegador não suporta áudio.
+                        </audio>
+
+                        <!-- Control Buttons -->
+                        <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+                            <button id="activate-sound" class="btn btn-primary">
+                                <i class="bi bi-volume-up me-1"></i>Ativar Som
+                            </button>
+                            <button id="deactivate-sound" class="btn btn-primary d-none">
+                                <i class="bi bi-volume-mute me-1"></i>Desativar Som
+                            </button>
+                            <button id="silence-alarm" class="btn btn-outline-warning">
+                                <i class="bi bi-bell-slash me-1"></i>Silenciar Alarme
+                            </button>
+                        </div>
+
+                        <!-- Audio Status Display -->
+                        <div class="row text-center mb-3">
+                            <div class="col-6 col-md-3">
+                                <span class="badge bg-secondary badge-audio">
+                                    <i class="bi bi-music-note me-1"></i>
+                                    Áudio: <span id="audio-unlocked">🔒 Bloqueado</span>
+                                </span>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <span class="badge bg-secondary badge-audio">
+                                    <i class="bi bi-volume-up me-1"></i>
+                                    Som: <span id="sound-active">❌ Inativo</span>
+                                </span>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <span class="badge bg-secondary badge-audio">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    Alarme: <span id="alarm-active">🟢 Inativo</span>
+                                </span>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <span class="badge bg-secondary badge-audio">
+                                    <i class="bi bi-play me-1"></i>
+                                    Reproduzindo: <span id="audio-playing">❌ Não</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Event Log -->
+                        <div class="mt-4">
+                            <h3 class="h5 fw-semibold mb-3">
+                                <i class="bi bi-journal-text me-2"></i>Log de eventos
+                            </h3>
+                            <div id="log-container" class="log-container border rounded p-3 bg-light">
+                                <div id="no-events" class="text-muted text-center py-4">
+                                    <i class="bi bi-hourglass-split me-2"></i>
+                                    Aguardando eventos de alarme...
+                                </div>
+                                <div id="log-entries"></div>
+                            </div>
+                        </div>
+
+                        <!-- Shutdown Button -->
+                        <div class="d-flex justify-content-center mt-4 pt-3 border-top">
+                            <button id="shutdown-btn" class="btn btn-danger">
+                                <i class="bi bi-power me-2"></i>Terminar Sistema
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+        class ChildMonitorApp {
+            constructor() {
+                this.ws = null;
+                this.wsConnected = false;
+                this.audio = document.getElementById('alarm-audio');
+                this.audioUnlocked = false;
+                this.soundActive = false;
+                this.alarmActive = false;
+                this.audioPlaying = false;
+                this.currentAlarmSilenced = false;
+                this.currentAlarmId = null;
+                this.log = [];
+                this.detections = null;
+                this.lastAlertState = false;
+                this.lastPersonsEmpty = true;
+                // ✅ NOVO ESTADO PARA CONTROLAR COR DA ZONA
+                this.personOutsideZone = false;
+
+                this.initializeApp();
+            }
+
+            initializeApp() {
+                this.setupAudio();
+                this.setupEventListeners();
+                this.setupTheme();
+                this.connectWebSocket();
+                this.checkBackendHealth();
+                this.startBackendHealthChecks();
+            }
+
+            setupAudio() {
+                const audio = this.audio;
+
+                audio.addEventListener('playing', () => {
+                    this.audioPlaying = true;
+                    this.updateAudioStatus();
+                });
+
+                audio.addEventListener('pause', () => {
+                    this.audioPlaying = false;
+                    this.updateAudioStatus();
+                });
+
+                audio.addEventListener('canplay', () => {
+                    // Arquivo de áudio carregado e pronto
+                });
+
+                audio.addEventListener('error', (e) => {
+                    console.error('[Áudio] ❌ Erro ao carregar:', e);
+                });
+
+                // Configurar volume
+                audio.volume = 1.0;
+                audio.muted = false;
+            }
+
+            setupEventListeners() {
+                // Sound control buttons
+                document.getElementById('activate-sound').addEventListener('click', () => {
+                    this.activateSound();
+                });
+
+                document.getElementById('deactivate-sound').addEventListener('click', () => {
+                    this.deactivateSound();
+                });
+
+                document.getElementById('silence-alarm').addEventListener('click', () => {
+                    this.silenceAlarm();
+                });
+
+                // Shutdown button
+                document.getElementById('shutdown-btn').addEventListener('click', () => {
+                    this.handleShutdown();
+                });
+
+                // Theme toggle
+                document.getElementById('theme-toggle').addEventListener('click', () => {
+                    this.toggleTheme();
+                });
+
+                // Video resize handler for overlay
+                const videoStream = document.getElementById('video-stream');
+                videoStream.addEventListener('load', () => {
+                    this.updateDetectionOverlay();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.updateDetectionOverlay();
+                });
+            }
+
+            setupTheme() {
+                // Load saved theme or use system preference
+                const savedTheme = localStorage.getItem('darkMode');
+                let darkMode;
+
+                if (savedTheme !== null) {
+                    darkMode = JSON.parse(savedTheme);
+                } else {
+                    darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                }
+
+                this.applyTheme(darkMode);
+            }
+
+            applyTheme(darkMode) {
+                const html = document.documentElement;
+                const themeBtn = document.getElementById('theme-toggle');
+
+                if (darkMode) {
+                    html.setAttribute('data-bs-theme', 'dark');
+                    themeBtn.innerHTML = '<i class="bi bi-moon-fill"></i><span class="d-none d-sm-inline ms-1">Dark</span>';
+                } else {
+                    html.setAttribute('data-bs-theme', 'light');
+                    themeBtn.innerHTML = '<i class="bi bi-sun-fill"></i><span class="d-none d-sm-inline ms-1">Light</span>';
+                }
+
+                localStorage.setItem('darkMode', JSON.stringify(darkMode));
+            }
+
+            toggleTheme() {
+                const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+                this.applyTheme(!isDark);
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.hostname}:8000/ws`;
+
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onopen = () => {
+                    this.wsConnected = true;
+                    this.updateWSStatus();
+                    this.ws.send('ping');
+                    console.log('[WebSocket] Conectado ao backend');
+                };
+
+                this.ws.onmessage = (event) => {
+                    this.handleWebSocketMessage(event);
+                };
+
+                this.ws.onerror = (error) => {
+                    this.wsConnected = false;
+                    this.updateWSStatus();
+                    console.error('[WebSocket] Erro de conexão:', error);
+                };
+
+                this.ws.onclose = () => {
+                    this.wsConnected = false;
+                    this.updateWSStatus();
+                    console.log('[WebSocket] Conexão fechada');
+
+                    // Reconectar após 5 segundos
+                    setTimeout(() => {
+                        this.connectWebSocket();
+                    }, 5000);
+                };
+            }
+
+            handleWebSocketMessage(event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'start') {
+                        const newAlarmId = data.timestamp || Date.now();
+
+                        if (this.currentAlarmId !== newAlarmId) {
+                            this.currentAlarmSilenced = false;
+                            this.currentAlarmId = newAlarmId;
+                        }
+
+                        this.alarmActive = true;
+                        this.updateAudioStatus();
+                        this.addLogEntry('start', 'Alarme iniciado', data.timestamp);
+                        this.tryPlayAlarm();
+
+                    } else if (data.type === 'stop') {
+                        this.alarmActive = false;
+                        this.audioPlaying = false;
+                        this.currentAlarmSilenced = false;
+                        // ✅ RESETAR ESTADO DA ZONA QUANDO ALARME PARA
+                        this.personOutsideZone = false;
+                        this.updateAudioStatus();
+
+                        if (this.audio) {
+                            this.audio.pause();
+                            this.audio.currentTime = 0;
+                        }
+
+                        const message = `Alarme terminado (Duração: ${(data.duration || 0).toFixed(1)}s)`;
+                        this.addLogEntry('stop', message, data.timestamp, data.duration);
+
+                    } else if (data.type === 'detection') {
+                        this.detections = data;
+
+                        // ✅ ATUALIZAR ESTADO DA PESSOA FORA DA ZONA
+                        this.personOutsideZone = data.person_outside_zone || false;
+
+                        this.updateDetectionOverlay();
+
+                        if (data.alert_active !== undefined) {
+                            const wasActive = this.alarmActive;
+                            this.alarmActive = data.alert_active;
+                            this.updateAudioStatus();
+
+                            if (!wasActive && this.alarmActive) {
+                                this.addLogEntry('start', 'Alarme iniciado', data.timestamp);
+                                this.tryPlayAlarm();
+                            } else if (wasActive && !this.alarmActive) {
+                                this.addLogEntry('stop', 'Alarme terminado', data.timestamp);
+                                // ✅ RESETAR ESTADO QUANDO ALARME PARA
+                                this.personOutsideZone = false;
+                            }
+                        }
+
+                        this.lastAlertState = data.alert_active;
+                        this.lastPersonsEmpty = data.persons.length === 0;
+                    }
+
+                } catch (e) {
+                    console.error('[WebSocket] Erro ao processar mensagem:', event.data, e);
+                }
+            }
+
+            updateWSStatus() {
+                const indicator = document.getElementById('ws-status-indicator');
+                const text = document.getElementById('ws-status-text');
+
+                if (this.wsConnected) {
+                    indicator.className = 'status-indicator status-connected';
+                    text.textContent = 'Conectado';
+                    text.className = 'text-success';
+                } else {
+                    indicator.className = 'status-indicator status-disconnected';
+                    text.textContent = 'Desconectado';
+                    text.className = 'text-danger';
+                }
+            }
+
+            async checkBackendHealth() {
+                try {
+                    const response = await fetch(`http://${window.location.hostname}:8000/health`, {
+                        method: 'GET',
+                        signal: AbortSignal.timeout(5000)
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateBackendStatus(true, data.message || 'Backend conectado');
+                    } else {
+                        throw new Error(`Erro ${response.status}`);
+                    }
+                } catch (error) {
+                    this.updateBackendStatus(false, 'Backend desconectado');
+                }
+            }
+
+            updateBackendStatus(isOnline, message) {
+                const indicator = document.getElementById('backend-status-indicator');
+                const text = document.getElementById('backend-status-text');
+
+                if (isOnline) {
+                    indicator.className = 'status-indicator status-connected';
+                    text.textContent = message;
+                    text.className = 'text-success';
+                } else {
+                    indicator.className = 'status-indicator status-disconnected';
+                    text.textContent = message;
+                    text.className = 'text-danger';
+                }
+            }
+
+            startBackendHealthChecks() {
+                setInterval(() => {
+                    this.checkBackendHealth();
+                }, 30000); // Check every 30 seconds
+            }
+
+            activateSound() {
+                this.audio.muted = false;
+                this.audio.volume = 1.0;
+                this.soundActive = true;
+                this.audioUnlocked = true;
+                this.updateAudioStatus();
+                this.updateSoundButtons();
+
+                // Se há alarme ativo, toca imediatamente
+                if (this.alarmActive) {
+                    this.tryPlayAlarm();
+                }
+
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send('ativar');
+                }
+            }
+
+            deactivateSound() {
+                this.audio.muted = true;
+                this.audio.pause();
+                this.soundActive = false;
+                this.updateAudioStatus();
+                this.updateSoundButtons();
+            }
+
+            silenceAlarm() {
+                // Marca o alarme atual como silenciado
+                this.currentAlarmSilenced = true;
+
+                // Para o áudio se estiver tocando
+                if (this.audioPlaying && this.audio) {
+                    this.audio.pause();
+                    this.audio.currentTime = 0;
+                    this.audioPlaying = false;
+                }
+
+                this.updateAudioStatus();
+            }
+
+            tryPlayAlarm() {
+                // Não toca se o alarme atual foi silenciado
+                if (this.currentAlarmSilenced) {
+                    return;
+                }
+
+                if (this.audio && this.soundActive) {
+                    this.audioPlaying = true;
+                    this.audio.play()
+                        .then(() => {
+                            this.audioUnlocked = true;
+                            this.updateAudioStatus();
+                        })
+                        .catch((error) => {
+                            this.audioPlaying = false;
+                            console.warn('[Áudio] ❌ Falha autoplay:', error.message);
+                            console.log('[Áudio] 💡 Clique em "Ativar Som" para habilitar áudio');
+                        });
+                }
+            }
+
+            updateSoundButtons() {
+                const activateBtn = document.getElementById('activate-sound');
+                const deactivateBtn = document.getElementById('deactivate-sound');
+
+                if (this.soundActive) {
+                    activateBtn.classList.add('d-none');
+                    deactivateBtn.classList.remove('d-none');
+                } else {
+                    activateBtn.classList.remove('d-none');
+                    deactivateBtn.classList.add('d-none');
+                }
+            }
+
+            updateAudioStatus() {
+                document.getElementById('audio-unlocked').textContent =
+                    this.audioUnlocked ? '✅ Desbloqueado' : '🔒 Bloqueado';
+
+                document.getElementById('sound-active').textContent =
+                    this.soundActive ? '✅ Ativo' : '❌ Inativo';
+
+                document.getElementById('alarm-active').textContent =
+                    this.alarmActive ? '🔴 ATIVO' : '🟢 Inativo';
+
+                document.getElementById('audio-playing').textContent =
+                    this.audioPlaying ? '✅ Sim' : '❌ Não';
+
+                // Atualizar botão de silenciar
+                const silenceBtn = document.getElementById('silence-alarm');
+                if (silenceBtn) {
+                    if (this.alarmActive && !this.currentAlarmSilenced) {
+                        silenceBtn.disabled = false;
+                        silenceBtn.innerHTML = '<i class="bi bi-bell-slash me-1"></i>Silenciar Alarme';
+                    } else if (this.alarmActive && this.currentAlarmSilenced) {
+                        silenceBtn.disabled = true;
+                        silenceBtn.innerHTML = '<i class="bi bi-volume-mute me-1"></i>Silenciado';
+                    } else {
+                        silenceBtn.disabled = true;
+                        silenceBtn.innerHTML = '<i class="bi bi-bell-slash me-1"></i>Silenciar Alarme';
+                    }
+                }
+
+                // Stop audio when alarm is inactive
+                if (!this.alarmActive && this.audioPlaying) {
+                    this.audio.pause();
+                    this.audio.currentTime = 0;
+                    this.audioPlaying = false;
+                }
+            }
+
+            addLogEntry(type, message, timestamp, duration) {
+                const logEntry = {
+                    type,
+                    message,
+                    timestamp: timestamp ? timestamp * 1000 : Date.now(),
+                    duration
+                };
+
+                this.log.unshift(logEntry);
+
+                // Aguardar próximo frame para garantir que DOM está pronto
+                requestAnimationFrame(() => {
+                    this.updateLogDisplay();
+                });
+            }
+
+            updateLogDisplay() {
+                // Aguardar até que os elementos estejam disponíveis
+                const waitForElements = () => {
+                    const logEntriesContainer = document.getElementById('log-entries');
+                    const noEvents = document.getElementById('no-events');
+
+                    if (!logEntriesContainer || !noEvents) {
+                        // Aguardar mais um pouco e tentar novamente
+                        setTimeout(waitForElements, 50);
+                        return;
+                    }
+
+                    // Elementos encontrados, prosseguir com a atualização
+                    this.doUpdateLogDisplay(logEntriesContainer, noEvents);
+                };
+
+                waitForElements();
+            }
+
+            doUpdateLogDisplay(logEntriesContainer, noEvents) {
+                if (this.log.length === 0) {
+                    noEvents.style.display = 'block';
+                    logEntriesContainer.innerHTML = '';
+                    return;
+                }
+
+                noEvents.style.display = 'none';
+
+                const logHtml = this.log.map(entry => {
+                    const date = new Date(entry.timestamp);
+                    const timeString = date.toLocaleString('pt-PT', {
+                        timeZone: 'Europe/Lisbon',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+
+                    const icon = entry.type === 'start' ? '🚨' : '✅';
+                    const cssClass = `log-entry log-${entry.type}`;
+
+                    return `
+                        <div class="${cssClass}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-medium">
+                                    [${timeString}] ${entry.message}
+                                </span>
+                                <span class="opacity-75">${icon}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                logEntriesContainer.innerHTML = logHtml;
+            }
+
+            updateDetectionOverlay() {
+                const overlay = document.getElementById('video-overlay');
+                const videoElement = document.getElementById('video-stream');
+
+                // Verificar se os elementos existem
+                if (!overlay) {
+                    console.warn('Elemento video-overlay não encontrado no DOM');
+                    return;
+                }
+
+                if (!this.detections || !videoElement) {
+                    overlay.innerHTML = '';
+                    return;
+                }
+
+                const videoRect = videoElement.getBoundingClientRect();
+                const scaleX = videoElement.clientWidth / this.detections.resolution.width;
+                const scaleY = videoElement.clientHeight / this.detections.resolution.height;
+
+                let overlayHtml = '';
+
+                // ✅ ATUALIZAR ZONA COM DIFERENTES CORES BASEADAS NO STATUS
+                if (this.detections.zone) {
+                    const zone = this.detections.zone;
+                    const left = (zone.x1 * scaleX / videoElement.clientWidth) * 100;
+                    const top = (zone.y1 * scaleY / videoElement.clientHeight) * 100;
+                    const width = ((zone.x2 - zone.x1) * scaleX / videoElement.clientWidth) * 100;
+                    const height = ((zone.y2 - zone.y1) * scaleY / videoElement.clientHeight) * 100;
+
+                    // Determinar classe CSS baseada no estado
+                    let zoneClass = 'zone-safe';  // Verde por padrão
+
+                    if (this.alarmActive) {
+                        zoneClass = 'zone-danger';  // Vermelho - alarme ativo
+                    } else if (this.personOutsideZone) {
+                        zoneClass = 'zone-warning';  // Amarelo - pessoa fora mas aguardando
+                    }
+
+                    overlayHtml += `
+                        <div class="detection-zone ${zoneClass}" style="
+                            left: ${left}%;
+                            top: ${top}%;
+                            width: ${width}%;
+                            height: ${height}%;
+                        "></div>
+                    `;
+                }
+
+                // Add person overlays (unchanged)
+                this.detections.persons.forEach((person, index) => {
+                    const left = (person.x * scaleX / videoElement.clientWidth) * 100;
+                    const top = (person.y * scaleY / videoElement.clientHeight) * 100;
+                    const width = (person.width * scaleX / videoElement.clientWidth) * 100;
+                    const height = (person.height * scaleY / videoElement.clientHeight) * 100;
+
+                    const inZone = person.in_zone;
+                    const personClass = inZone ? 'person-in-zone' : 'person-out-zone';
+                    const labelClass = inZone ? 'label-in-zone' : 'label-out-zone';
+                    const labelText = inZone ? 'Na Zona' : 'FORA DA ZONA';
+
+                    overlayHtml += `
+                        <div class="detection-person ${personClass}" style="
+                            left: ${left}%;
+                            top: ${top}%;
+                            width: ${width}%;
+                            height: ${height}%;
+                        ">
+                            <div class="person-label ${labelClass}">
+                                ${labelText}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                overlay.innerHTML = overlayHtml;
+            }
+
+            async handleShutdown() {
+                const confirmed = confirm(
+                    'Tem certeza que deseja terminar o sistema?\n\nEsta ação encerrará o monitoramento e o servidor.'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    await fetch(`http://${window.location.hostname}:8000/shutdown`, {
+                        method: 'POST'
+                    });
+                    alert('Sistema sendo finalizado...');
+                } catch (error) {
+                    console.error('Erro ao finalizar o sistema:', error);
+                    alert('Erro ao finalizar o sistema. Verifique o console.');
+                }
+            }
+        }
+
+        // Initialize app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChildMonitorApp();
+        });
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', async () => {
+            try {
+              const registration = await navigator.serviceWorker.register('/sw.js');
+              console.log('SW registered: ', registration);
+
+              // Check for updates
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Show update notification
+                    showUpdateNotification();
+                  }
+                });
+              });
+            } catch (error) {
+              console.log('SW registration failed: ', error);
+            }
+          });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          showInstallButton();
+        });
+
+        function showInstallButton() {
+          // Add install button to UI
+          const installBtn = document.createElement('button');
+          installBtn.textContent = '📱 Instalar App';
+          installBtn.className = 'btn btn-success btn-sm';
+          installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              const { outcome } = await deferredPrompt.userChoice;
+              deferredPrompt = null;
+              installBtn.remove();
+            }
+          });
+
+          // Add to header
+          document.querySelector('.navbar .d-flex').appendChild(installBtn);
+        }
+    </script>
+</body>
+</html>

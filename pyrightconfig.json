@@ -1,0 +1,19 @@
+{
+  "include": ["backend"],
+  "exclude": ["**/__pycache__", "**/*.pyc", ".venv"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Linux",
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "stubPath": "typings",
+  "extraPaths": [
+    "./backend",
+    "./typings"
+  ],
+  "reportMissingTypeStubs": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownVariableType": false
+}

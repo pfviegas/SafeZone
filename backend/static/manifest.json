@@ -1,0 +1,27 @@
+{
+  "name": "SafeZone - Child Monitor",
+  "short_name": "SafeZone",
+  "description": "Sistema de monitoramento infantil com detecção de pessoas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#198754",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["security", "utilities", "lifestyle"],
+  "lang": "pt-BR",
+  "dir": "ltr"
+}

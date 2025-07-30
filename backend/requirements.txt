@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+opencv-python
+numpy
+requests
+python-multipart
+ultralytics
+torch
+torchvision
+Pillow
+jinja2
+seaborn
+matplotlib

@@ -1,0 +1,20 @@
+{
+    "python.defaultInterpreterPath": "/home/paulo/Documents/Projetos_Pessoais/Child_monitor/.venv/bin/python",
+    "python.analysis.extraPaths": [
+        "/home/paulo/Documents/Projetos_Pessoais/Child_monitor/.venv/lib/python3.12/site-packages"
+    ],
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.terminal.activateEnvironment": true,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.venv": false
+    },
+    "python.analysis.include": [
+        "backend/**/*.py"
+    ],
+    "python.analysis.stubPath": "/home/paulo/Documents/Projetos_Pessoais/Child_monitor/.venv/lib/python3.12/site-packages"
+}

@@ -1,0 +1,482 @@
+/*
+Monitoring System for Children with Zone Detection
+Author: Mr. V
+Description: Monitors a specific area and triggers alerts when
+             a child leaves the zone for more than 10 seconds
+*/
+
+/* =====   CSS Variables   ===== */
+:root {
+    --bs-body-bg: #ffffff;
+    --bs-body-color: #212529;
+
+    /* Security Zone Colors */
+    --zone-safe-color: #198754;
+    --zone-warning-color: #ffc107;
+    --zone-danger-color: #dc3545;
+
+    /* Person Detection Colors */
+    --person-in-zone-color: #198754;
+    --person-out-zone-color: #dc3545;
+
+    /* Transitions */
+    --transition-fast: 0.3s ease;
+    --transition-medium: 0.5s ease;
+
+    /* Shadows */
+    --shadow-light: 0 4px 12px rgba(0,0,0,0.1);
+    --shadow-medium: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+/* ===== DARK THEME ===== */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #212529;
+    --bs-body-color: #ffffff;
+}
+
+/* ===== STATUS INDICATORS ===== */
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    transition: var(--transition-fast);
+}
+
+.status-connected {
+    background-color: var(--zone-safe-color);
+    box-shadow: 0 0 8px rgba(25, 135, 84, 0.5);
+}
+
+.status-disconnected {
+    background-color: var(--zone-danger-color);
+    box-shadow: 0 0 8px rgba(220, 53, 69, 0.5);
+}
+
+/* ===== VIDEO CONTAINER ===== */
+.video-container {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.video-stream {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: var(--shadow-light);
+    transition: var(--transition-fast);
+}
+
+.video-stream:hover {
+    box-shadow: var(--shadow-medium);
+}
+
+/* ===== DETECTION OVERLAY ===== */
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+}
+
+/* ===== DETECTION ZONE ===== */
+.detection-zone {
+    position: absolute;
+    border: 2px dashed;
+    transition: var(--transition-fast);
+    border-radius: 4px;
+}
+
+/* Security Zone States */
+.zone-safe {
+    border-color: var(--zone-safe-color);
+    background: rgba(25, 135, 84, 0.1);
+    animation: none;
+}
+
+/* Warning Zone */
+.zone-warning {
+    border-color: var(--zone-warning-color);
+    background: rgba(255, 193, 7, 0.15);
+    animation: pulse-warning 2s infinite;
+}
+
+/* Danger Zone */
+.zone-danger {
+    border-color: var(--zone-danger-color);
+    background: rgba(220, 53, 69, 0.2);
+    animation: pulse-danger 1s infinite;
+}
+
+/* Pulse Animations */
+@keyframes pulse-warning {
+    0%, 100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes pulse-danger {
+    0%, 100% {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+}
+
+/* =====   PERSON DETECTION   ===== */
+.detection-person {
+    position: absolute;
+    border: 2px solid;
+    border-radius: 4px;
+    transition: var(--transition-fast);
+}
+
+.person-in-zone {
+    border-color: var(--person-in-zone-color);
+    background: rgba(25, 135, 84, 0.1);
+}
+
+.person-out-zone {
+    border-color: var(--person-out-zone-color);
+    background: rgba(220, 53, 69, 0.1);
+    animation: person-alert 1.5s infinite;
+}
+
+@keyframes person-alert {
+    0%, 100% {
+        border-width: 2px;
+        opacity: 0.8;
+    }
+    50% {
+        border-width: 3px;
+        opacity: 1;
+    }
+}
+
+/* =====   PERSON LABEL   ===== */
+.person-label {
+    position: absolute;
+    top: -24px;
+    left: 0;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: var(--transition-fast);
+}
+
+.label-in-zone {
+    background-color: var(--person-in-zone-color);
+    color: white;
+}
+
+.label-out-zone {
+    background-color: var(--person-out-zone-color);
+    color: white;
+    animation: label-pulse 1s infinite;
+}
+
+@keyframes label-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* =====   EVENT LOG   ===== */
+.log-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border-radius: 8px;
+    transition: var(--transition-fast);
+}
+
+.log-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.log-container::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.1);
+    border-radius: 3px;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.5);
+}
+
+.log-entry {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    border-left: 4px solid;
+    transition: var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.log-entry:hover {
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.log-start {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-color: var(--zone-danger-color);
+    color: #721c24;
+}
+
+[data-bs-theme="dark"] .log-start {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #f1aeb5;
+}
+
+.log-stop {
+    background-color: rgba(25, 135, 84, 0.1);
+    border-color: var(--zone-safe-color);
+    color: #0f5132;
+}
+
+[data-bs-theme="dark"] .log-stop {
+    background-color: rgba(25, 135, 84, 0.2);
+    color: #75b798;
+}
+
+/* =====   AUDIO STATUS   ===== */
+.audio-status {
+    font-size: 0.75rem;
+    padding: 4px;
+    margin: 2px 0;
+}
+
+.badge-audio {
+    font-size: 0.7rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: var(--transition-fast);
+}
+
+.badge-audio:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* =====   CUSTOM BUTTONS   ===== */
+.btn {
+    transition: var(--transition-fast);
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+/* =====   NAVBAR and HEADER   ===== */
+.navbar {
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+[data-bs-theme="dark"] .navbar {
+    border-bottom-color: rgba(255,255,255,0.1);
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, #198754, #20c997);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* =====   CARDS   ===== */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: var(--shadow-light);
+    transition: var(--transition-medium);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-medium);
+    transform: translateY(-2px);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    border-radius: 12px 12px 0 0 !important;
+}
+
+[data-bs-theme="dark"] .card-header {
+    background: linear-gradient(135deg, #343a40 0%, #495057 100%);
+    border-bottom-color: rgba(255,255,255,0.1);
+}
+
+/* =====   RESPONSIVE   ===== */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+
+    .video-stream {
+        border-radius: 6px;
+    }
+
+    .person-label {
+        font-size: 9px;
+        padding: 2px 6px;
+        top: -20px;
+    }
+
+    .log-entry {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+    }
+
+    .badge-audio {
+        font-size: 0.65rem;
+        padding: 4px 8px;
+    }
+}
+
+@media (max-width: 576px) {
+    .detection-zone,
+    .detection-person {
+        border-width: 1px;
+    }
+
+    .person-label {
+        font-size: 8px;
+        padding: 1px 4px;
+        top: -18px;
+    }
+
+    .log-container {
+        max-height: 300px;
+    }
+}
+
+/* =====   ACCESSIBILITY IMPROVEMENTS   ===== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* =====   UTILITIES   ===== */
+.text-gradient {
+    background: linear-gradient(45deg, #198754, #20c997);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.border-gradient {
+    border: 2px solid;
+    border-image: linear-gradient(45deg, #198754, #20c997) 1;
+}
+
+/* =====   LOADING STATES   ===== */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--zone-safe-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* =====   SPECIAL HOVER STATES   ===== */
+.zone-safe:hover {
+    background: rgba(25, 135, 84, 0.15);
+}
+
+.zone-warning:hover {
+    background: rgba(255, 193, 7, 0.2);
+}
+
+.zone-danger:hover {
+    background: rgba(220, 53, 69, 0.25);
+}
+
+/* =====   UX IMPROVEMENTS   ===== */
+.btn-group .btn {
+    border-radius: 0;
+}
+
+.btn-group .btn:first-child {
+    border-radius: 6px 0 0 6px;
+}
+
+.btn-group .btn:last-child {
+    border-radius: 0 6px 6px 0;
+}
+
+/* ===== FOCUS STATES ===== */
+.btn:focus,
+.form-control:focus {
+    box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.25);
+    border-color: var(--zone-safe-color);
+}
+
+/* =====   DARK MODE   ===== */
+[data-bs-theme="dark"] .video-stream {
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+[data-bs-theme="dark"] .log-container {
+    background-color: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.1);
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+}
