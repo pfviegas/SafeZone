@@ -90,16 +90,16 @@ class ChildMonitor:
                 # Try to read a frame to confirm it's working
                 ret, frame = cap.read()
                 if ret:
-                    _log_with_timestamp(f"✅ CCamera found at index {index}")
+                    _log_with_timestamp(f"✅ Camera found at index {index}")
                     cap.release()
                     return index
                 else:
                     _log_with_timestamp(
-                        f"⚠️ CCamera {index} opened but can't read frames"
+                        f"⚠️ Camera {index} opened but can't read frames"
                     )
                     cap.release()
             else:
-                _log_with_timestamp(f"❌ Could not open CCamera {index}")
+                _log_with_timestamp(f"❌ Could not open Camera {index}")
 
         _log_with_timestamp("❌ No camera found")
         return None
